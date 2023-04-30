@@ -17,6 +17,8 @@ def parse_arguments():
                         help="number of processes to use for data loading / preprocessing")
     parser.add_argument("--load_checkpoint", default=False,
                         help="whether to load pytorch lightning checkpoints")
+    parser.add_argument("--only_test", default=False,
+                        help="avoid the train phase and test on --test_path")
     # Architecture parameters
     parser.add_argument("--descriptors_dim", type=int, default=512,
                         help="dimensionality of the output descriptors")

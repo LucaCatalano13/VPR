@@ -141,7 +141,8 @@ if __name__ == '__main__':
         reload_dataloaders_every_n_epochs=1,  # we reload the dataset to shuffle the order
         log_every_n_steps=20,
     )
-    trainer.validate(model=model, dataloaders=val_loader)
-    trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    if not args.only_test:
+        trainer.validate(model=model, dataloaders=val_loader)
+        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader)
 
