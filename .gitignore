@@ -1,0 +1,6 @@
+data/
+.idea
+.spyproject
+__pycache__
+.ipynb_checkpoints
+LOGS

@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 import torchvision.models
@@ -111,6 +110,12 @@ if __name__ == '__main__':
     args = parser.parse_arguments()
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
+    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset}
+    if args.load_checkpoint:
+        model = LightningModel.load_from_checkpoint(args.checkpoint_path)
+    else:
+        model = LightningModel(**kwargs)
+
     model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds)
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
