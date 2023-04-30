@@ -112,7 +112,7 @@ if __name__ == '__main__':
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
     kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset}
     if args.load_checkpoint:
-        model = LightningModel.load_from_checkpoint(args.checkpoint_path)
+        model = LightningModel.load_from_checkpoint(args.checkpoint_path, **kwargs)
     else:
         model = LightningModel(**kwargs)
 
