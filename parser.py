@@ -1,9 +1,8 @@
-
 import argparse
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
     # Training parameters
     parser.add_argument("--batch_size", type=int, default=64,
                         help="The number of places to use per iteration (one place is N images)")
@@ -19,9 +18,12 @@ def parse_arguments():
                         help="whether to load pytorch lightning checkpoints")
     parser.add_argument("--only_test", default=False,
                         help="avoid the train phase and test on --test_path")
+    
     # Architecture parameters
     parser.add_argument("--descriptors_dim", type=int, default=512,
                         help="dimensionality of the output descriptors")
+    parser.add_argument("--pooling_layer", type = str, default=None,
+                        help="change the last pooling layer")
     
     # Visualizations parameters
     parser.add_argument("--num_preds_to_save", type=int, default=0,

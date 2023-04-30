@@ -14,7 +14,7 @@ from datasets.train_dataset import TrainDataset
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
+    def __init__(self, val_dataset, test_dataset, avgpool, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -24,6 +24,8 @@ class LightningModel(pl.LightningModule):
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Change the output of the FC layer to the desired descriptors dimension
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
+        if avgpool == "GeM":
+            self.model.avgpool = utils.GeM()
         # Set the loss function
         self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
@@ -110,7 +112,7 @@ if __name__ == '__main__':
     args = parser.parse_arguments()
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
-    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset}
+    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
     if args.load_checkpoint:
         model = LightningModel.load_from_checkpoint(args.checkpoint_path, **kwargs)
     else:
@@ -139,6 +141,7 @@ if __name__ == '__main__':
         reload_dataloaders_every_n_epochs=1,  # we reload the dataset to shuffle the order
         log_every_n_steps=20,
     )
+
     if not args.only_test:
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
