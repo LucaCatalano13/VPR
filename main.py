@@ -116,8 +116,6 @@ if __name__ == '__main__':
     else:
         model = LightningModel(**kwargs)
 
-    model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds)
-    
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
         monitor='R@1',
