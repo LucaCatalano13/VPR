@@ -2,6 +2,7 @@ import faiss
 import logging
 import numpy as np
 from typing import Tuple
+import torch
 from torch.utils.data import Dataset
 from torch import nn
 import torch.nn.functional as F
