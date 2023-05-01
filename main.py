@@ -3,7 +3,8 @@ import numpy as np
 import torchvision.models
 import pytorch_lightning as pl
 from torchvision import transforms as tfm
-from pytorch_metric_learning import losses
+from pytorch_metric_learning import losses, miners
+from pytorch_metric_learning.distances import CosineSimilarity, DotProductSimilarity
 from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -26,8 +27,11 @@ class LightningModel(pl.LightningModule):
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
         if avgpool == "GeM":
             self.model.avgpool = utils.GeM()
-        # Set the loss function
-        self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+        # Set miner
+        self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
+        # Set loss_function
+        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=DotProductSimilarity())
+        # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
         descriptors = self.model(images)
@@ -39,7 +43,10 @@ class LightningModel(pl.LightningModule):
 
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
-        loss = self.loss_fn(descriptors, labels)
+        # Include a miner for loss'pair selection
+        miner_output = self.miner_fn(descriptors , labels)
+        # Compute the loss using the loss function and the miner output instead of all possible batch pairs
+        loss = self.loss_fn(descriptors, labels, miner_output)
         return loss
 
     # This is the training step that's executed at each iteration
@@ -52,9 +59,6 @@ class LightningModel(pl.LightningModule):
         # Feed forward the batch to the model
         descriptors = self(images)  # Here we are calling the method forward that we defined above
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
-        
-        self.log('loss', loss.item(), logger=True)
-        return {'loss': loss}
 
     # For validation and test, we iterate step by step over the validation set
     def inference_step(self, batch):
@@ -141,7 +145,8 @@ if __name__ == '__main__':
         reload_dataloaders_every_n_epochs=1,  # we reload the dataset to shuffle the order
         log_every_n_steps=20,
     )
-
+    
+    # Train or test only with a pretrained model
     if not args.only_test:
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
