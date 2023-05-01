@@ -28,6 +28,20 @@ class GeM(nn.Module):
     def __repr__(self):
         return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ')'
 
+class CosPlace(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+        self.gem = GeM()
+        self.fc = nn.Linear(in_dim, out_dim)
+
+    def forward(self, x):
+        x = F.normalize(x, p=2, dim=1)
+        x = self.gem(x)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = F.normalize(x, p=2, dim=1)
+        return x
+
 def compute_recalls(eval_ds: Dataset, queries_descriptors : np.ndarray, database_descriptors : np.ndarray,
                     output_folder : str = None, num_preds_to_save : int = 0,
                     save_only_wrong_preds : bool = True) -> Tuple[np.ndarray, str]:

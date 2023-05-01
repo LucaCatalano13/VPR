@@ -15,7 +15,7 @@ from datasets.train_dataset import TrainDataset
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, avgpool, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
+    def __init__(self, val_dataset, test_dataset, avgpool, avgpool_param = {}, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -27,6 +27,9 @@ class LightningModel(pl.LightningModule):
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
         if avgpool == "GeM":
             self.model.avgpool = utils.GeM()
+        elif avgpool == "CosPlace":
+            avgpool_param = {'in_dim': 2048, 'out_dim': 2048}
+            self.model.avgpool = utils.CosPlace(avgpool_param)
         # Set miner
         self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
