@@ -31,10 +31,10 @@ class LightningModel(pl.LightningModule):
             avgpool_param = {'in_dim': 512, 'out_dim': 512}
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
         # Set miner
-        self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
+        # self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
-        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=CosineSimilarity())
-        # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+        # self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=CosineSimilarity())
+        self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
         descriptors = self.model(images)
@@ -47,9 +47,10 @@ class LightningModel(pl.LightningModule):
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
         # Include a miner for loss'pair selection
-        miner_output = self.miner_fn(descriptors , labels)
+        # miner_output = self.miner_fn(descriptors , labels)
         # Compute the loss using the loss function and the miner output instead of all possible batch pairs
-        loss = self.loss_fn(descriptors, labels, miner_output)
+        # loss = self.loss_fn(descriptors, labels, miner_output)
+        loss = self.loss_fn(descriptors, labels)
         return loss
 
     # This is the training step that's executed at each iteration
