@@ -29,7 +29,7 @@ class LightningModel(pl.LightningModule):
             self.model.avgpool = utils.GeM()
         elif avgpool == "CosPlace":
             avgpool_param = {'in_dim': 2048, 'out_dim': 2048}
-            self.model.avgpool = utils.CosPlace(avgpool_param)
+            self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
         # Set miner
         self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
