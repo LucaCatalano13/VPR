@@ -72,7 +72,7 @@ class LightningModel(pl.LightningModule):
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
             compressed_descriptors = self.phead(descriptors)
-            compressed_descriptors = compressed_descriptors.cpu()
+            compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
             ids = self.pbank.build_index()
             #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
