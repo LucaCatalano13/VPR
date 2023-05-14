@@ -70,7 +70,7 @@ class LightningModel(pl.LightningModule):
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
 
         if args.enable_gpm:
-            descriptors = descriptors.cpu() #tensore privo di gradient
+            # descriptors = descriptors.cpu() #tensore privo di gradient
             compressed_descriptors = self.phead(descriptors)
             compressed_descriptors = compressed_descriptors.cpu()
             compressed_descriptors = self.phead(descriptors)
