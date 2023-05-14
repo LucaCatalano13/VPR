@@ -22,6 +22,8 @@ def parse_arguments():
     # Architecture parameters
     parser.add_argument("--descriptors_dim", type=int, default=512,
                         help="dimensionality of the output descriptors")
+    parser.add_argument("--enable_gpm", default=False,
+                        help="whether to adopt Global Proxy Mining module")
     parser.add_argument("--pooling_layer", type = str, default=None,
                         help="change the last pooling layer")
     

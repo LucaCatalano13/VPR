@@ -30,6 +30,10 @@ class LightningModel(pl.LightningModule):
         elif avgpool == "CosPlace":
             avgpool_param = {'in_dim': 512, 'out_dim': 512}
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
+        # Instantiate the Proxy Head and Proxy Bank
+        if args.enable_gpm:
+            self.phead = utils.ProxyHead(out_dim=128, in_dim=args.descriptors_dim)
+            self.pbank = utils.ProxyBank(k=4)
         # Set miner
         # self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
@@ -62,7 +66,20 @@ class LightningModel(pl.LightningModule):
 
         # Feed forward the batch to the model
         descriptors = self(images)  # Here we are calling the method forward that we defined above
+        
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
+
+        if args.enable_gpm:
+            descriptors = descriptors.cpu().detach() #tensore privo di gradient
+            compressed_descriptors = self.phead(descriptors)
+            compressed_descriptors = compressed_descriptors.cpu().detach()
+            self.pbank.update_bank(compressed_descriptors, labels)
+            ids = self.pbank.build_index()
+            #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
+            self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
+                    batch_sampler=utils.ProxySampler(indexes_list=ids),
+                    num_workers=args.num_workers)
+    
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}

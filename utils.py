@@ -3,9 +3,11 @@ import logging
 import numpy as np
 from typing import Tuple
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 from torch import nn
 import torch.nn.functional as F
+from collections import defaultdict
+import math
 
 import visualizations
 
@@ -41,6 +43,102 @@ class CosPlace(nn.Module):
         x = self.fc(x)
         x = F.normalize(x, p=2, dim=1)
         return x
+
+class ProxyHead(nn.Module):
+    def __init__(self, in_dim, out_dim = 128):
+        super().__init__()
+        self.fc = nn.Linear(in_dim, out_dim)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = F.normalize(x, p=2)
+        return x
+    
+class ProxyBank:
+    """This class stores the places' proxies together with their identifier
+       and performs exhaustive search on the index to retrieve the mini-batch sampling pool."""
+
+    def __init__(self, k = 10, bank = None):
+        if bank is None:
+            bank = defaultdict(ProxyBank.Proxy)
+        self.__bank = bank
+        self.k = k
+        self.dim = 128
+        self.n_samples = self.dim
+        self.index = faiss.index_factory(self.dim, 'IDMap,Flat')
+
+    def update_bank(self, proxies, labels):
+        #riempo la banca
+        for d, l in zip(proxies, labels):
+            self.__bank[l.item()] = self.__bank[l.item()] + ProxyBank.Proxy(d)
+        #lista numpy [0-128 (dim)]
+        idx = np.arange(self.n_samples)
+        #da [[], []] a numero, che corrisponde alla media di quei proxy. Guarda metodo get_avg nella classe proxy  
+        proxies_by_idx = torch.stack([self.__bank[i].get_avg() for i in idx]) 
+        #aggiungo ad index descriptor e suo id
+        self.index.add_with_ids(proxies_by_idx, idx) 
+
+    def build_index(self):
+        bank_values = self.__bank.values()
+        bank_values = list(map(lambda bank_value: bank_value.get_avg(), bank_values))
+        bank_values = np.vstack(bank_values)
+
+        labels = np.array(list(self.__bank.keys()))
+
+        s = {}
+        for e in range(self.n_samples):
+            s[e] = 1
+
+        ids = []
+        #prelevo un id a caso
+        list_idx = np.arange(self.n_samples)
+        np.random.shuffle(list_idx)
+        #se id i non è ancora stato slezionato
+        for i in list_idx:
+            if s[i] == 1: 
+                # ritorna distanza, [[]] contente id (not placeID, ma quelli dell'index) => quindi prendo id[0] 
+                # per eliminare [] più esterna, tanto dim = 1
+                _, id = self.index.search(bank_values[i:i + 1], self.k)
+                id = id[0]
+                #aggiungo a ids gli ultimi id estratti []
+                ids.extend(id)
+                self.index.remove_ids(id)
+                for e in id:
+                    #id già selezionato
+                    s[e] = 0
+
+        ids = ids[:bank_values.shape[0]]
+        return labels[ids]
+
+    class Proxy:
+        def __init__(self, tensor = None, n = 1, dim = 128):
+            if tensor is None:
+                self.__arch = torch.zeros(dim)
+            else:
+                self.__arch = tensor
+            self.__n = n
+
+        def get_avg(self):
+            return self.__arch / self.__n
+
+        def __add__(self, other):
+            return ProxyBank.Proxy(tensor=self.__arch + other.__arch, n=self.__n + other.__n)
+
+
+class ProxySampler(Sampler):
+    def __init__(self, indexes_list, batch_size = 10):
+        self.batch_size = batch_size
+        self.batches = [indexes_list[batch_size * i: batch_size * (i + 1)] for i in
+                        range(math.ceil(len(indexes_list) / batch_size))]
+
+    def __iter__(self):
+        for batch in self.batches:
+            print("batch:", batch)
+            yield batch
+
+    def __len__(self):
+        return len(self.batches)
+
 
 def compute_recalls(eval_ds: Dataset, queries_descriptors : np.ndarray, database_descriptors : np.ndarray,
                     output_folder : str = None, num_preds_to_save : int = 0,
