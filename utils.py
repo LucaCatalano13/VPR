@@ -4,6 +4,7 @@ import numpy as np
 from typing import Tuple
 import torch
 from torch.utils.data import Dataset, Sampler
+from pytorch_metric_learning import losses
 from torch import nn
 import torch.nn.functional as F
 from collections import defaultdict
@@ -48,12 +49,21 @@ class ProxyHead(nn.Module):
     def __init__(self, in_dim, out_dim = 128):
         super().__init__()
         self.fc = nn.Linear(in_dim, out_dim)
-
+        self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.0001, weight_decay=0.001)
+    
     def forward(self, x):
         x = self.fc(x)
         x = F.normalize(x, p=2)
         return x
     
+    def fit(self, descriptors, labels):
+        compressed_descriptors = self(descriptors)
+        loss = self.loss_fn(compressed_descriptors, labels)
+        self.optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        self.optimizer.step()
+
 class ProxyBank:
     """This class stores the places' proxies together with their identifier
        and performs exhaustive search on the index to retrieve the mini-batch sampling pool."""
