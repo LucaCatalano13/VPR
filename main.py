@@ -63,16 +63,19 @@ class LightningModel(pl.LightningModule):
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
-
         # Feed forward the batch to the model
         descriptors = self(images)  # Here we are calling the method forward that we defined above
-        
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
 
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
             compressed_descriptors = self.phead(descriptors)
             self.phead.fit(compressed_descriptors, labels)
+            compressed_descriptors = self.phead(descriptors)
+            proxy_loss = self.phead.loss_fn(compressed_descriptors, labels)
+            self.phead.optimizer.zero_grad()
+            proxy_loss.backward(retain_graph=True)
+            self.phead.optimizer.step()
             compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
             ids = self.pbank.build_index()
@@ -80,6 +83,7 @@ class LightningModel(pl.LightningModule):
             self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
                     batch_sampler=utils.ProxySampler(indexes_list=ids),
                     num_workers=args.num_workers)
+        
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
     # For validation and test, we iterate step by step over the validation set
