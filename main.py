@@ -15,7 +15,8 @@ from datasets.train_dataset import TrainDataset
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, avgpool, avgpool_param = {}, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
+    def __init__(self, val_dataset, test_dataset, avgpool, avgpool_param = {}, 
+                    proxy_head = None, proxy_bank = None, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -32,13 +33,13 @@ class LightningModel(pl.LightningModule):
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
         # Instantiate the Proxy Head and Proxy Bank
         if args.enable_gpm:
-            self.phead = utils.ProxyHead(out_dim=128, in_dim=args.descriptors_dim)
-            self.pbank = utils.ProxyBank(k=4)
+            self.phead = proxy_head
+            self.pbank = proxy_bank
         # Set miner
         # self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
-        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=CosineSimilarity())
-        # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+        # self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=CosineSimilarity())
+        self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
         descriptors = self.model(images)
@@ -69,7 +70,9 @@ class LightningModel(pl.LightningModule):
 
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
+            print(descriptors)
             compressed_descriptors = self.phead(descriptors)
+            print(compressed_descriptors)
             proxy_loss = self.phead.loss_fn(compressed_descriptors, labels)
             self.phead.optimizer.zero_grad()
             proxy_loss.backward(retain_graph=True)
@@ -141,6 +144,11 @@ if __name__ == '__main__':
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
     kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
+    if args.enable_gpm:
+        proxy_head = utils.ProxyHead(args.descriptors_dim)
+        proxy_bank = utils.ProxyBank(k=4)
+        kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
+
     if args.load_checkpoint:
         model = LightningModel.load_from_checkpoint(args.checkpoint_path, **kwargs)
     else:
