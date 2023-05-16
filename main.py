@@ -72,7 +72,7 @@ class LightningModel(pl.LightningModule):
             # descriptors = descriptors.cpu() #tensore privo di gradient
             print(descriptors)
             compressed_descriptors = self.phead(descriptors)
-            print(compressed_descriptors)
+            print(descriptors)
             proxy_loss = self.phead.loss_fn(compressed_descriptors, labels)
             self.phead.optimizer.zero_grad()
             proxy_loss.backward(retain_graph=True)
