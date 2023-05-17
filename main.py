@@ -103,12 +103,14 @@ class LightningModel(pl.LightningModule):
     def test_epoch_end(self, all_descriptors):
         return self.inference_epoch_end(all_descriptors, self.test_dataset, self.num_preds_to_save)
 
-    def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0):
-        ids = self.pbank.build_index()
-        # al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
-        self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
-                batch_sampler=utils.ProxySampler(indexes_list=ids),
-                num_workers=args.num_workers)
+    def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0, ok=False):
+        if args.enable_gpm and ok:
+            ids = self.pbank.build_index()
+            # al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
+            self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
+                    batch_sampler=utils.ProxySampler(indexes_list=ids),
+                    num_workers=args.num_workers)
+        ok = True
         """all_descriptors contains database then queries descriptors"""
         all_descriptors = np.concatenate(all_descriptors)
         queries_descriptors = all_descriptors[inference_dataset.database_num : ]
