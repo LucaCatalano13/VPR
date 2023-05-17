@@ -77,11 +77,11 @@ class LightningModel(pl.LightningModule):
             self.phead.optimizer.step()
             compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
-            ids = self.pbank.build_index()
-            #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
-            self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
-                    batch_sampler=utils.ProxySampler(indexes_list=ids),
-                    num_workers=args.num_workers)
+            # ids = self.pbank.build_index()
+            # #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
+            # self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
+            #         batch_sampler=utils.ProxySampler(indexes_list=ids),
+            #         num_workers=args.num_workers)
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -104,6 +104,11 @@ class LightningModel(pl.LightningModule):
         return self.inference_epoch_end(all_descriptors, self.test_dataset, self.num_preds_to_save)
 
     def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0):
+        ids = self.pbank.build_index()
+        # al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
+        self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
+                batch_sampler=utils.ProxySampler(indexes_list=ids),
+                num_workers=args.num_workers)
         """all_descriptors contains database then queries descriptors"""
         all_descriptors = np.concatenate(all_descriptors)
         queries_descriptors = all_descriptors[inference_dataset.database_num : ]
