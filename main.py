@@ -162,7 +162,7 @@ if __name__ == '__main__':
     kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
     if args.enable_gpm:
         proxy_head = utils.ProxyHead(args.descriptors_dim)
-        proxy_bank = utils.ProxyBank(k=4)
+        proxy_bank = utils.ProxyBank(k=128)
         kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
 
     if args.load_checkpoint:
