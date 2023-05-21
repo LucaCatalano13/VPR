@@ -31,13 +31,13 @@ class LightningModel(pl.LightningModule):
         elif avgpool == "CosPlace":
             avgpool_param = {'in_dim': 512, 'out_dim': 512}
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
-        elif self.pooling_str == "mixvpr":
+        elif avgpool == "mixvpr":
             self.mixvpr_out_channels = 256
             self.mixvpr_out_rows = 4
             # MixVPR works with an input of dimension [n_batch, 512, 7,7] == [n_batch, in_channels, in_h, in_w]
             self.model.avgpool = utils.MixVPR( in_channels = self.model.fc.in_features, in_h = 7, in_w = 7, out_channels = self.mixvpr_out_channels , out_rows =  self.mixvpr_out_rows )
         
-        if self.pooling_str == "mixvpr":
+        if avgpool == "mixvpr":
             self.aggregator_out_dim  = self.mixvpr_out_channels * self.mixvpr_out_rows
             self.model.fc = torch.nn.Linear(self.aggregator_out_dim, descriptors_dim)
         else:
