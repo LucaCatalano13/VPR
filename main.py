@@ -31,6 +31,18 @@ class LightningModel(pl.LightningModule):
         elif avgpool == "CosPlace":
             avgpool_param = {'in_dim': 512, 'out_dim': 512}
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
+        elif self.pooling_str == "mixvpr":
+            self.mixvpr_out_channels = 256
+            self.mixvpr_out_rows = 4
+            # MixVPR works with an input of dimension [n_batch, 512, 7,7] == [n_batch, in_channels, in_h, in_w]
+            self.model.avgpool = utils.MixVPR( in_channels = self.model.fc.in_features, in_h = 7, in_w = 7, out_channels = self.mixvpr_out_channels , out_rows =  self.mixvpr_out_rows )
+        
+        if self.pooling_str == "mixvpr":
+            self.aggregator_out_dim  = self.mixvpr_out_channels * self.mixvpr_out_rows
+            self.model.fc = torch.nn.Linear(self.aggregator_out_dim, descriptors_dim)
+        else:
+             self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
+        
         # Instantiate the Proxy Head and Proxy Bank
         if args.enable_gpm:
             self.phead = proxy_head
@@ -142,7 +154,6 @@ def get_datasets_and_dataloaders(args):
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
-
 
 if __name__ == '__main__':
     args = parser.parse_arguments()
