@@ -48,9 +48,10 @@ class LightningModel(pl.LightningModule):
             self.phead = proxy_head
             self.pbank = proxy_bank
         # Set miner
-        # self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
+        self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
         # Set loss_function
-        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0, distance=CosineSimilarity())
+        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0)
+        self.loss_head = losses.MultiSimilarityLoss( alpha=1, beta=50, base=0.0 )
         # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
@@ -64,10 +65,10 @@ class LightningModel(pl.LightningModule):
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
         # Include a miner for loss'pair selection
-        # miner_output = self.miner_fn(descriptors , labels)
+        miner_output = self.miner_fn(descriptors , labels)
         # Compute the loss using the loss function and the miner output instead of all possible batch pairs
-        # loss = self.loss_fn(descriptors, labels, miner_output)
-        loss = self.loss_fn(descriptors, labels)
+        loss = self.loss_fn(descriptors, labels, miner_output)
+        # loss = self.loss_fn(descriptors, labels)
         return loss
 
     # This is the training step that's executed at each iteration
@@ -83,12 +84,10 @@ class LightningModel(pl.LightningModule):
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
             compressed_descriptors = self.phead(descriptors)
-            proxy_loss = self.phead.loss_fn(compressed_descriptors, labels)
-            self.phead.optimizer.zero_grad()
-            proxy_loss.backward(retain_graph=True)
-            self.phead.optimizer.step()
             compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
+            loss_head = self.loss_head(compressed_descriptors, labels)
+            loss = loss + loss_head
             # ids = self.pbank.build_index()
             # #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
             # self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
@@ -162,7 +161,7 @@ if __name__ == '__main__':
     kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
     if args.enable_gpm:
         proxy_head = utils.ProxyHead(args.descriptors_dim)
-        proxy_bank = utils.ProxyBank(k=4)
+        proxy_bank = utils.ProxyBank(k=args.batch_size)
         kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
 
     if args.load_checkpoint:
