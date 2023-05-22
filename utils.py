@@ -1,5 +1,6 @@
 import faiss
 import logging
+import random
 import numpy as np
 from typing import Tuple
 import torch
@@ -43,16 +44,6 @@ class CosPlace(nn.Module):
         x = x.flatten(1)
         x = self.fc(x)
         x = F.normalize(x, p=2, dim=1)
-        return x
-
-class ProxyHead(nn.Module):
-    def __init__(self, in_dim, out_dim = 128):
-        super().__init__()
-        self.fc = nn.Linear(in_dim, out_dim)
-
-    def forward(self, x):
-        x = self.fc(x)
-        x = F.normalize(x, p=2)
         return x
 
 class FeatureMixerLayer(nn.Module):
@@ -124,62 +115,66 @@ class MixVPR(nn.Module):
         x = F.normalize(x.flatten(1), p=2, dim=-1)
         return x
 
+class ProxyHead(nn.Module):
+    def __init__(self, in_dim, out_dim = 512):
+        super().__init__()
+        self.fc = nn.Linear(in_dim, out_dim)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = F.normalize(x, p=2)
+        return x
+
 class ProxyBank:
     """This class stores the places' proxies together with their identifier
        and performs exhaustive search on the index to retrieve the mini-batch sampling pool."""
 
-    def __init__(self, k = 10, bank = None):
-        if bank is None:
-            bank = defaultdict(ProxyBank.Proxy)
-        self.__bank = bank
+    def __init__(self, k = 512):
+        self.__bank = {}
         self.k = k
-        self.dim = 128
+        self.dim = 512
         self.n_samples = self.dim
         self.index = faiss.index_factory(self.dim, 'IDMap,Flat')
 
     def update_bank(self, proxies, labels):
         #riempo la banca
         for d, l in zip(proxies, labels):
-            self.__bank[l.item()] = self.__bank[l.item()] + ProxyBank.Proxy(d)
-        #lista numpy [0-128 (dim)]
-        idx = np.arange(self.n_samples)
-        #da [[], []] a numero, che corrisponde alla media di quei proxy. Guarda metodo get_avg nella classe proxy  
-        proxies_by_idx = torch.stack([self.__bank[i].get_avg() for i in idx]) 
-        #aggiungo ad index descriptor e suo id
-        self.index.add_with_ids(proxies_by_idx, idx) 
+            # From Tensor to int to be usable in dictionary as key
+            label = int(l)
+            # Create or Update the content of the bank dictionary
+            if label not in self.__bank.keys():
+                self.__bank[label] = ProxyBank.Proxy( tensor = d , n = 1 )
+            else:
+                self.__bank[label] = ProxyBank.Proxy( tensor = d , n = 1 ) + self.__bank[label]
 
-    def build_index(self):
-        bank_values = self.__bank.values()
-        bank_values = list(map(lambda bank_value: bank_value.get_avg(), bank_values))
-        bank_values = np.vstack(bank_values)
-
-        labels = np.array(list(self.__bank.keys()))
-
-        s = {}
-        for e in range(self.n_samples):
-            s[e] = 1
-
-        ids = []
-        #prelevo un id a caso
-        list_idx = np.arange(self.n_samples)
-        np.random.shuffle(list_idx)
-        #se id i non è ancora stato slezionato
-        for i in list_idx:
-            if s[i] == 1: 
-                # ritorna distanza, [[]] contente id (not placeID, ma quelli dell'index) => quindi prendo id[0] 
-                # per eliminare [] più esterna, tanto dim = 1
-                _, id = self.index.search(bank_values[i:i + 1], self.k)
-                id = id[0]
-                #aggiungo a ids gli ultimi id estratti []
-                ids.extend(id)
-                self.index.remove_ids(id)
-                for e in id:
-                    #id già selezionato
-                    s[e] = 0
-
-        ids = ids[:bank_values.shape[0]]
-        return labels[ids]
-
+    def update_index():
+        for label, proxy_acc in self.__bank.items:
+            # Use get_avg() to go from accumulator to average and compute the global proxy for each place
+            self.index.add_with_ids( proxy_acc.get_avg().reshape(1,-1).detach().cpu() , label )
+ 
+    def batch_sampling(self , batch_dim):
+        batches = []
+        #TODO: check if bank is updated 
+        # While places are enough to generate the KNN
+        while len(self.__bank) >= batch_dim:
+            # Extract from bank a random label-proxy related to a place
+            rand_index = random.randint(0 , len(self.__bank) - 1)
+            rand_bank_item = list(self.__bank.items())[rand_index]
+            # Inside bank i have ProxyAccumulator --> get_avg gives me the Proxy
+            starting_proxy = rand_bank_item[1].get_avg()
+            # Compute the batch_size_Nearest_Neighbours with faiss_index w.r.t. the extracted proxy
+            distances, batch_of_labels = self.__index.search(starting_proxy.reshape(1,-1).detach().cpu(), batch_dim)
+            # Faiss return a row per query in a multidim np.array, extract the one row
+            batch_of_labels = batch_of_labels.flatten()
+            # Add the new generated batch the one alredy created. KNN contains the starting proxy itself. Labels is the new Batch
+            batches.append(batch_of_labels)
+            # Remove all the already picked places from the index and the bank (no buono)
+            for key_to_del in batch_of_labels:
+                del self.__bank[key_to_del]
+            self.__index.remove_ids(batch_of_labels)
+        # Output the batches
+        return batches 
+    
     class Proxy:
         def __init__(self, tensor = None, n = 1, dim = 128):
             if tensor is None:
@@ -194,19 +189,42 @@ class ProxyBank:
         def __add__(self, other):
             return ProxyBank.Proxy(tensor=self.__arch + other.__arch, n=self.__n + other.__n)
 
-class ProxySampler(Sampler):
-    def __init__(self, indexes_list, batch_size = 10):
+class ProxyBankBatchSampler(Sampler):
+    def __init__(self, dataset, batch_size, bank):
+        # Epoch counter
+        self.is_first_epoch = True
+        # Save dataset
+        self.dataset = dataset
+        # Set dim of batch
         self.batch_size = batch_size
-        self.batches = [indexes_list[batch_size * i: batch_size * (i + 1)] for i in
-                        range(math.ceil(len(indexes_list) / batch_size))]
-
-    def __iter__(self):
-        for batch in self.batches:
-            print("batch:", batch)
-            yield batch
-
+        # Compute the floor of the length of the iterable
+        self.iterable_size = len(dataset) // batch_size
+        # This is our ProxyBank, hopefully updated at the end of each epoch
+        self.bank = bank
+        self.batch_iterable = []
+        
+    # Return an iterable over a list of groups of indeces (list of batches)
+    def __iter__(self): 
+        # Epoch 0 case
+        if self.is_first_epoch:
+            # Change flag, first epoch is done
+            self.is_first_epoch = False
+            # Generate a random order of the indeces of the dataset, inside the parentesis there is the len of the dataset
+            random_indeces_perm = torch.randperm(len(self.dataset))
+            # Generate a fixed size partitioning of indeces
+            batches =  torch.split(random_indeces_perm , self.batch_size)
+            self.batch_iterable = iter(batches)
+        # Epochs where Bank is informative, after epoch 0
+        else:
+            # Generate batches from ProxyBank
+            batches = self.bank.batch_sampling( self.batch_size )
+            self.batch_iterable = iter(batches)
+        self.counter += 1
+        return  self.batch_iterable
+    
+    # Return the length of the generated iterable, the one over the batches
     def __len__(self):
-        return len(self.batches)
+        return self.iterable_size
 
 def compute_recalls(eval_ds: Dataset, queries_descriptors : np.ndarray, database_descriptors : np.ndarray,
                     output_folder : str = None, num_preds_to_save : int = 0,

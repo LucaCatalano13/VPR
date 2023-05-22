@@ -48,10 +48,10 @@ class LightningModel(pl.LightningModule):
             self.phead = proxy_head
             self.pbank = proxy_bank
         # Set miner
-        self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1, distance=CosineSimilarity())
+        self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1)
         # Set loss_function
         self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0)
-        self.loss_head = losses.MultiSimilarityLoss( alpha=1, beta=50, base=0.0 )
+        self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
         # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
@@ -88,11 +88,6 @@ class LightningModel(pl.LightningModule):
             self.pbank.update_bank(compressed_descriptors, labels)
             loss_head = self.loss_head(compressed_descriptors, labels)
             loss = loss + loss_head
-            # ids = self.pbank.build_index()
-            # #al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
-            # self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
-            #         batch_sampler=utils.ProxySampler(indexes_list=ids),
-            #         num_workers=args.num_workers)
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -116,11 +111,7 @@ class LightningModel(pl.LightningModule):
 
     def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0, ok=False):
         if args.enable_gpm and ok:
-            ids = self.pbank.build_index()
-            # al dataloader passo un parametro in più che è batch_sampler, così da permettermi di passargliene uno custom
-            self.trainer.train_dataloader = DataLoader(dataset=self.trainer.train_dataloader.dataset,
-                    batch_sampler=utils.ProxySampler(indexes_list=ids),
-                    num_workers=args.num_workers)
+            self.pbank.udate_index()
         ok = True
         """all_descriptors contains database then queries descriptors"""
         all_descriptors = np.concatenate(all_descriptors)
@@ -135,7 +126,7 @@ class LightningModel(pl.LightningModule):
         self.log('R@1', recalls[0], prog_bar=False, logger=True)
         self.log('R@5', recalls[1], prog_bar=False, logger=True)
 
-def get_datasets_and_dataloaders(args):
+def get_datasets_and_dataloaders(args, bank=None):
     train_transform = tfm.Compose([
         tfm.RandAugment(num_ops=3),
         tfm.ToTensor(),
@@ -149,7 +140,15 @@ def get_datasets_and_dataloaders(args):
     )
     val_dataset = TestDataset(dataset_folder=args.val_path)
     test_dataset = TestDataset(dataset_folder=args.test_path)
-    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+
+    # Define dataloaders, train one has with proxy and without proxy case
+    if bank is not None:
+        # Define Proxy Sampler that uses ProxyBank
+        my_proxy_sampler = utils.ProxyBankBatchSampler(train_dataset, args.batch_size , bank)
+        train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler, num_workers=args.num_workers)
+    else:
+        train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers)
+   
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
@@ -161,7 +160,7 @@ if __name__ == '__main__':
     kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
     if args.enable_gpm:
         proxy_head = utils.ProxyHead(args.descriptors_dim)
-        proxy_bank = utils.ProxyBank(k=args.batch_size)
+        proxy_bank = utils.ProxyBank(k=512)
         kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
 
     if args.load_checkpoint:
