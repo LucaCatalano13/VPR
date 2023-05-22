@@ -47,11 +47,11 @@ class LightningModel(pl.LightningModule):
         if args.enable_gpm:
             self.phead = proxy_head
             self.pbank = proxy_bank
+            self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
         # Set miner
         self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1)
         # Set loss_function
-        self.loss_fn = losses.MultiSimilarityLoss(alpha=2, beta=50, base=0.0)
-        self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
+        self.loss_fn = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
         # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images):
@@ -84,7 +84,7 @@ class LightningModel(pl.LightningModule):
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
             compressed_descriptors = self.phead(descriptors)
-            compressed_descriptors = compressed_descriptors.cpu().detach()
+            # compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
             loss_head = self.loss_head(compressed_descriptors, labels)
             loss = loss + loss_head
@@ -109,10 +109,9 @@ class LightningModel(pl.LightningModule):
     def test_epoch_end(self, all_descriptors):
         return self.inference_epoch_end(all_descriptors, self.test_dataset, self.num_preds_to_save)
 
-    def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0, ok=False):
-        if args.enable_gpm and ok:
+    def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0):
+        if args.enable_gpm:
             self.pbank.udate_index()
-        ok = True
         """all_descriptors contains database then queries descriptors"""
         all_descriptors = np.concatenate(all_descriptors)
         queries_descriptors = all_descriptors[inference_dataset.database_num : ]
@@ -147,7 +146,7 @@ def get_datasets_and_dataloaders(args, bank=None):
         my_proxy_sampler = utils.ProxyBankBatchSampler(train_dataset, args.batch_size , bank)
         train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler)
     else:
-        train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
    
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
@@ -197,4 +196,3 @@ if __name__ == '__main__':
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader)
-

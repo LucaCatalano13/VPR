@@ -126,15 +126,12 @@ class ProxyHead(nn.Module):
         return x
 
 class ProxyBank:
-    """This class stores the places' proxies together with their identifier
-       and performs exhaustive search on the index to retrieve the mini-batch sampling pool."""
-
     def __init__(self, k = 512):
         self.__bank = {}
         self.k = k
-        self.dim = 512
-        self.n_samples = self.dim
-        self.index = faiss.index_factory(self.dim, 'IDMap,Flat')
+        self.__base_index = faiss.IndexFlatL2(self.k)
+        # Wrap it in order to use user defined indeces (place labels)
+        self.__index = faiss.IndexIDMap(self.__base_index)
 
     def update_bank(self, proxies, labels):
         #riempo la banca
@@ -148,14 +145,21 @@ class ProxyBank:
                 self.__bank[label] = ProxyBank.Proxy( tensor = d , n = 1 ) + self.__bank[label]
 
     def update_index():
+        self.__index.reset()
         for label, proxy_acc in self.__bank.items:
             # Use get_avg() to go from accumulator to average and compute the global proxy for each place
-            self.index.add_with_ids( proxy_acc.get_avg().reshape(1,-1).detach().cpu() , label )
- 
+            self.index.add_with_ids(proxy_acc.get_avg().reshape(1,-1).detach().cpu() , label)
+    
+    # Empty all the dictionaries and indeces created so far
+    def reset(self):
+        del self.__bank
+        del self.__index
+        self.__bank = {}
+        self.__base_index = faiss.IndexFlatL2( self.proxy_dim )
+        self.__index = faiss.IndexIDMap( self.__base_index )
+    
     def batch_sampling(self , batch_dim):
         batches = []
-        #TODO: check if bank is updated 
-        # While places are enough to generate the KNN
         while len(self.__bank) >= batch_dim:
             # Extract from bank a random label-proxy related to a place
             rand_index = random.randint(0 , len(self.__bank) - 1)
@@ -172,6 +176,7 @@ class ProxyBank:
             for key_to_del in batch_of_labels:
                 del self.__bank[key_to_del]
             self.__index.remove_ids(batch_of_labels)
+        self.reset()
         # Output the batches
         return batches 
     
