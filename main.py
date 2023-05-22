@@ -111,7 +111,7 @@ class LightningModel(pl.LightningModule):
 
     def inference_epoch_end(self, all_descriptors, inference_dataset, num_preds_to_save=0):
         if args.enable_gpm:
-            self.pbank.udate_index()
+            self.pbank.update_index()
         """all_descriptors contains database then queries descriptors"""
         all_descriptors = np.concatenate(all_descriptors)
         queries_descriptors = all_descriptors[inference_dataset.database_num : ]
