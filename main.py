@@ -145,9 +145,9 @@ def get_datasets_and_dataloaders(args, bank=None):
     if bank is not None:
         # Define Proxy Sampler that uses ProxyBank
         my_proxy_sampler = utils.ProxyBankBatchSampler(train_dataset, args.batch_size , bank)
-        train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler, num_workers=args.num_workers)
+        train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler)
     else:
-        train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size)
    
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
