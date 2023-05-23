@@ -154,14 +154,14 @@ if __name__ == '__main__':
         bank = None
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     
-    if args.ckpt_path is not None:
+    if args.checkpoint_path is not None:
       model_args = {
         "val_dataset" : val_dataset,
         "test_dataset" : test_dataset,
         "last_pooling_layer" : args.pooling_layer,
         "bank" : bank
         }
-      model = LightningModel.load_from_checkpoint(args.ckpt_path, **model_args)
+      model = LightningModel.load_from_checkpoint(args.checkpoint_path, **model_args)
     else:
       model_args = {
         "last_pooling_layer" : args.pooling_layer,
