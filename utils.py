@@ -143,9 +143,9 @@ class ProxyBank:
 
     def update_index():
         self.__index.reset()
-        for label, proxy_acc in self.__bank.items:
+        for label, proxy in self.__bank.items:
             # Compute the global proxy for each place
-            self.index.add_with_ids(proxy_acc.get_avg().reshape(1,-1).detach().cpu() , label)
+            self.index.add_with_ids(proxy.get_avg().reshape(1,-1).detach().cpu() , label)
     
     # Empty all the dictionaries and indeces created so far
     # def reset(self):
@@ -160,18 +160,18 @@ class ProxyBank:
         while len(self.__bank) >= batch_dim:
             # Extract a label
             rand_index = random.randint(0 , len(self.__bank) - 1)
-            rand_bank_item = list(self.__bank.items())[rand_index]
+            rand_bank = list(self.__bank.items())[rand_index]
             # From ProxyAccumulator to the Proxy, using get_avg()
-            starting_proxy = rand_bank_item[1].get_avg()
+            start_proxy = rand_bank[1].get_avg()
             # Compute the kNN with faiss_index
-            distances, batch_of_labels = self.__index.search(starting_proxy.reshape(1,-1).detach().cpu(), batch_dim)
+            _, batch = self.__index.search(start_proxy.reshape(1,-1).detach().cpu(), batch_dim)
             # From [[]] to []: only one row needed
-            batch_of_labels = batch_of_labels.flatten()
+            batch = batch[0]
             # adding it to the list of batches used in the sampler
-            batches.append(batch_of_labels)
-            for key_to_del in batch_of_labels:
-                del self.__bank[key_to_del]
-            self.__index.remove_ids(batch_of_labels)
+            batches.append(batch)
+            for label in batch:
+                del self.__bank[label]
+            self.__index.remove_ids(batch)
         # self.reset()
         return batches 
     
@@ -203,12 +203,12 @@ class ProxyBankBatchSampler(Sampler):
             self.is_first_epoch = False
             random_indeces_perm = torch.randperm(len(self.dataset))
             #spilt into batches
-            batches =  torch.split(random_indeces_perm , self.batch_size)
-            self.batch_iterable = iter(batches)
+            indeces =  torch.split(random_indeces_perm , self.batch_size)
+            self.batch_iterable = iter(indeces)
         else:
             # Batches from ProxyBank
-            batches = self.bank.batch_sampling(self.batch_size)
-            self.batch_iterable = iter(batches)
+            indeces = self.bank.batch_sampling(self.batch_size)
+            self.batch_iterable = iter(indeces)
         return  self.batch_iterable
     
     def __len__(self):
