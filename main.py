@@ -58,7 +58,11 @@ class LightningModel(pl.LightningModule):
 
     def forward(self, images):
         descriptors = self.model(images)
-        return descriptors
+        if args.enable_gpm:
+            compressed_descriptors = self.phead(descriptors)
+        else:
+            compressed_descriptors = None
+        return descriptors, compressed_descriptors
 
     def configure_optimizers(self):
         optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
@@ -80,12 +84,11 @@ class LightningModel(pl.LightningModule):
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
         # Feed forward the batch to the model
-        descriptors = self(images)  # Here we are calling the method forward that we defined above
+        descriptors, compressed_descriptors = self(images)  # Here we are calling the method forward that we defined above
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
 
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
-            compressed_descriptors = self.phead(descriptors)
             # compressed_descriptors = compressed_descriptors.cpu().detach()
             self.pbank.update_bank(compressed_descriptors, labels)
             loss_head = self.loss_head(compressed_descriptors, labels)
@@ -96,7 +99,7 @@ class LightningModel(pl.LightningModule):
     # For validation and test, we iterate step by step over the validation set
     def inference_step(self, batch):
         images, _ = batch
-        descriptors = self(images)
+        descriptors, _ = self(images)
         return descriptors.cpu().numpy().astype(np.float32)
 
     def validation_step(self, batch, batch_idx):
