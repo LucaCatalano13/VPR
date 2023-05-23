@@ -24,8 +24,7 @@ class LightningModel(pl.LightningModule):
         self.save_only_wrong_preds = save_only_wrong_preds
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-        # Change the output of the FC layer to the desired descriptors dimension
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
+        
         if avgpool == "GeM":
             self.model.avgpool = utils.GeM()
         elif avgpool == "CosPlace":
@@ -37,6 +36,9 @@ class LightningModel(pl.LightningModule):
             # MixVPR works with an input of dimension [n_batch, 512, 7,7] == [n_batch, in_channels, in_h, in_w]
             self.model.avgpool = utils.MixVPR( in_channels = self.model.fc.in_features, in_h = 7, in_w = 7, out_channels = self.mixvpr_out_channels , out_rows =  self.mixvpr_out_rows )
         
+        # Initialize output dim as the standard one of CNN
+        self.aggregator_out_dim = self.model.fc.in_features
+
         if avgpool == "mixvpr":
             self.aggregator_out_dim  = self.mixvpr_out_channels * self.mixvpr_out_rows
             self.model.fc = torch.nn.Linear(self.aggregator_out_dim, descriptors_dim)
@@ -143,7 +145,7 @@ def get_datasets_and_dataloaders(args, bank=None):
 
     # Define dataloaders, train one has with proxy and without proxy case
     if bank is not None:
-        # Define Proxy Sampler that uses ProxyBank
+        # Proxy Sampler with ProxyBank
         my_proxy_sampler = utils.ProxyBankBatchSampler(train_dataset, args.batch_size , bank)
         train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler)
     else:
