@@ -193,7 +193,7 @@ if __name__ == '__main__':
     )
     
     # Train only if specified, else test only with a pretrained model
-    if args.only_test:
+    if not args.only_test:
       trainer.validate(model=model, dataloaders=val_loader)
       trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader)
