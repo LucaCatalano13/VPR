@@ -134,7 +134,7 @@ class ProxyBank:
 
     def update_index(self):
         self.index.reset()
-        for label, proxy in self.__bank.items:
+        for label, proxy in self.__bank.items():
             self.index.add_with_ids(proxy.get_avg().reshape(1,-1).detach().cpu() , label)
     
     # Empty all the dictionaries and indeces created so far
