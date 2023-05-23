@@ -136,7 +136,7 @@ def get_datasets_and_dataloaders(args, bank = None):
     test_dataset = TestDataset(dataset_folder=args.test_path)
 
     if bank is not None:
-        my_proxy_sampler = utils.ProxyBankBatchMiner( train_dataset, args.batch_size , bank )
+        my_proxy_sampler = utils.ProxyBankBatchSampler( train_dataset, args.batch_size , bank )
         train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler, num_workers=args.num_workers)
     else:
         train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
