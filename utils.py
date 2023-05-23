@@ -173,16 +173,17 @@ class ProxyBankBatchSampler(Sampler):
         self.iterable_size = len(dataset) // batch_size
         self.bank = bank
         self.batch_iterable = []
-
+        self.counter = 0
     def __iter__(self): 
-        if self.is_first_epoch:
+        if self.is_first_epoch and self.counter % 2:
             self.is_first_epoch = False
             random_indeces_perm = torch.randperm(len(self.dataset))
             indeces =  torch.split(random_indeces_perm , self.batch_size)
             self.batch_iterable = iter(indeces)
-        else:
+        elif self.counter % 2:
             indeces = self.bank.batch_sampling(self.batch_size)
             self.batch_iterable = iter(indeces)
+        self.counter += 1
         return  self.batch_iterable
     
     def __len__(self):
