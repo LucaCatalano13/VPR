@@ -136,7 +136,7 @@ class ProxyBank:
         #riempo la banca
         for d, l in zip(proxies, labels):
             # Create or Update the content of the bank dictionary
-            self.__bank[l] = self.__bank[l] + ProxyBank.Proxy(d)
+            self.__bank[l.item()] = self.__bank[l.item()] + ProxyBank.Proxy(d)
 
     def update_index():
         self.__index.reset()
