@@ -158,13 +158,19 @@ def get_datasets_and_dataloaders(args, bank=None):
 if __name__ == '__main__':
     args = parser.parse_arguments()
 
-    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
-    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
     if args.enable_gpm:
         proxy_head = utils.ProxyHead(args.descriptors_dim)
         proxy_bank = utils.ProxyBank(k=512)
-        kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
+    else:
+        proxy_head = None
+        proxy_bank = None
 
+    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, proxy_bank)
+    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer}
+    
+    if args.enable_gpm:
+        kwargs.update({"proxy_bank": proxy_bank, "proxy_head": proxy_head})
+    
     if args.load_checkpoint:
         model = LightningModel.load_from_checkpoint(args.checkpoint_path, **kwargs)
     else:
