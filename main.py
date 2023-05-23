@@ -147,7 +147,7 @@ def get_datasets_and_dataloaders(args, bank = None):
 
 if __name__ == '__main__':
     args = parser.parse_arguments()
-    if args.proxy is not None:
+    if args.enable_gpm is not True:
         proxy_dim = 512
         bank = utils.ProxyBank(proxy_dim)
     else:
