@@ -117,10 +117,10 @@ class Proxy:
         return ProxyBank.Proxy(tensor=self.__arch + other.__arch, n=self.__n + other.__n)
 
 class ProxyBank:
-    def __init__(self, k = 512):
+    def __init__(self, proxy_dim = 512):
         self.__bank = {}
-        self.k = k
-        self.__base_index = faiss.IndexFlatL2(self.k)
+        self.proxy_dim = proxy_dim
+        self.__base_index = faiss.IndexFlatL2(self.proxy_dim)
         self.index = faiss.IndexIDMap(self.__base_index)
 
     def update_bank(self, proxies, labels):
