@@ -127,7 +127,7 @@ class ProxyHead(nn.Module):
 
 class ProxyBank:
     def __init__(self, k = 512):
-        self.__bank = defaultdict(ProxyBank.Proxy(k))
+        self.__bank = {}
         self.k = k
         self.__base_index = faiss.IndexFlatL2(self.k)
         self.index = faiss.IndexIDMap(self.__base_index)
@@ -136,7 +136,7 @@ class ProxyBank:
         #riempo la banca
         for d, l in zip(proxies, labels):
             # Create or Update the content of the bank dictionary
-            self.__bank[l.item()] = self.__bank[l.item()] + ProxyBank.Proxy(d)
+            self.__bank[l] = self.__bank[l] + ProxyBank.Proxy(d)
 
     def update_index():
         self.__index.reset()
