@@ -102,6 +102,20 @@ class ProxyHead(nn.Module):
         x = F.normalize(x, p=2)
         return x
 
+class Proxy:
+    def __init__(self, tensor = None, n = 1, dim = 512):
+        if tensor is None:
+            self.__arch = torch.zeros(dim)
+        else:
+            self.__arch = tensor
+        self.__n = n
+
+    def get_avg(self):
+        return self.__arch / self.__n
+
+    def __add__(self, other):
+        return ProxyBank.Proxy(tensor=self.__arch + other.__arch, n=self.__n + other.__n)
+
 class ProxyBank:
     def __init__(self, k = 512):
         self.__bank = {}
@@ -114,9 +128,9 @@ class ProxyBank:
         for d, l in zip(proxies, labels):
             # Create or Update the bank
             if l.item not in self.__bank:
-                self.__bank[l.item()] = ProxyBank.Proxy(d)
+                self.__bank[l.item()] = Proxy(d)
             else:
-                self.__bank[l.item()] = self.__bank[l.item()] + ProxyBank.Proxy(d)
+                self.__bank[l.item()] = self.__bank[l.item()] + Proxy(d)
 
     def update_index(self):
         self.__index.reset()
@@ -150,21 +164,7 @@ class ProxyBank:
             self.__index.remove_ids(batch)
         self.reset()
         return batches 
-    
-    class Proxy:
-        def __init__(self, tensor = None, n = 1, dim = 512):
-            if tensor is None:
-                self.__arch = torch.zeros(dim)
-            else:
-                self.__arch = tensor
-            self.__n = n
-
-        def get_avg(self):
-            return self.__arch / self.__n
-
-        def __add__(self, other):
-            return ProxyBank.Proxy(tensor=self.__arch + other.__arch, n=self.__n + other.__n)
-
+       
 class ProxyBankBatchSampler(Sampler):
     def __init__(self, dataset, batch_size, bank):
         self.is_first_epoch = True
