@@ -360,7 +360,7 @@ if __name__ == '__main__':
     args = parser.parse_arguments()
 
     if args.enable_gpm:
-        proxy_bank = utils.ProxyBank(k=512)
+        proxy_bank = utils.ProxyBank(proxy_dim=512)
     else:
         proxy_bank = None
 
