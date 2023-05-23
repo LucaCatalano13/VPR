@@ -154,7 +154,7 @@ if __name__ == '__main__':
         bank = None
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     
-    if args.checkpoint_path is not None:
+    if args.load_checkpoint:
       model_args = {
         "val_dataset" : val_dataset,
         "test_dataset" : test_dataset,
