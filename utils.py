@@ -133,17 +133,17 @@ class ProxyBank:
                 self.__bank[l.item()] = self.__bank[l.item()] + Proxy(d)
 
     def update_index(self):
-        self.__index.reset()
+        self.index.reset()
         for label, proxy in self.__bank.items:
             self.index.add_with_ids(proxy.get_avg().reshape(1,-1).detach().cpu() , label)
     
     # Empty all the dictionaries and indeces created so far
     def reset(self):
          del self.__bank
-         del self.__index
+         del self.index
          self.__bank = {}
          self.__base_index = faiss.IndexFlatL2( self.proxy_dim )
-         self.__index = faiss.IndexIDMap( self.__base_index )
+         self.index = faiss.IndexIDMap( self.__base_index )
     
     def batch_sampling(self , batch_dim):
         batches = []
@@ -154,14 +154,14 @@ class ProxyBank:
             # From ProxyAccumulator to the Proxy, using get_avg()
             start_proxy = rand_bank[1].get_avg()
             # Compute the kNN with faiss_index
-            _, batch = self.__index.search(start_proxy.reshape(1,-1).detach().cpu(), batch_dim)
+            _, batch = self.index.search(start_proxy.reshape(1,-1).detach().cpu(), batch_dim)
             # From [[]] to []: only one row needed
             batch = batch[0]
             # adding it to the list of batches used in the sampler
             batches.append(batch)
             for label in batch:
                 del self.__bank[label]
-            self.__index.remove_ids(batch)
+            self.index.remove_ids(batch)
         self.reset()
         return batches 
        
