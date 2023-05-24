@@ -18,6 +18,8 @@ def parse_arguments():
                         help="whether to load pytorch lightning checkpoints")
     parser.add_argument("--only_test", default=False,
                         help="avoid the train phase and test on --test_path")
+    parser.add_argument("--self_supervised", default=False,
+                        help="self_supervised enable")
     
     # Architecture parameters
     parser.add_argument("--descriptors_dim", type=int, default=512,
