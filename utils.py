@@ -196,7 +196,7 @@ class GaussianBlur(object):
     def __call__(self, img):
         if np.random.rand() < self.p:
             sigma = np.random.rand() * 1.9 + 0.1
-            return img.filter(ImageFilter.GaussianBlur(sigma))
+            return img.cpu().detach().numpy().filter(ImageFilter.GaussianBlur(sigma))
         else:
             return img
 
