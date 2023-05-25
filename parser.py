@@ -28,7 +28,10 @@ def parse_arguments():
                         help="whether to adopt Global Proxy Mining module")
     parser.add_argument("--pooling_layer", type = str, default=None,
                         help="change the last pooling layer")
-    
+    parser.add_argument("--optimizer", type = str, default="sgd",
+                        help="change the optimizer")
+    parser.add_argument("--lr_scheduler", type = str, default="",
+                        help="change the learning rate scheduler")
     # Visualizations parameters
     parser.add_argument("--num_preds_to_save", type=int, default=0,
                         help="At the end of training, save N preds for each query. "

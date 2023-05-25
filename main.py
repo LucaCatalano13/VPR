@@ -16,7 +16,7 @@ from datasets.train_dataset import TrainDataset
 
 class LightningModel(pl.LightningModule):
     def __init__(self, val_dataset, test_dataset, avgpool, avgpool_param = {}, 
-                proxy_bank = None, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, self_supervised=False):
+                proxy_bank = None, descriptors_dim = 512, num_preds_to_save = 0, save_only_wrong_preds = True, self_supervised=False, optimizer_choice = "sgd", lr_scheduler = None):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -32,6 +32,8 @@ class LightningModel(pl.LightningModule):
                 utils.Solarization(p=0.0),
                 tfm.ToTensor()])
         
+        self.optimizer_choice = optimizer_choice
+        self.lr_scheduler = lr_scheduler
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         
@@ -80,8 +82,16 @@ class LightningModel(pl.LightningModule):
         return descriptors, compressed_descriptors
 
     def configure_optimizers(self):
-        optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        return optimizers
+        if self.optimizer_choice == "sgd":
+            optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
+        if self.optimizer_choice == "adam":
+            optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        if self.lr_scheduler == "reducelronplateau" :
+            schedulers = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
+                    threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+        else :
+            schedulers = []
+        return [optimizers] , [schedulers]
 
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
@@ -187,7 +197,7 @@ if __name__ == '__main__':
         proxy_bank = None
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, proxy_bank)
-    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer, "self_supervised": args.self_supervised}
+    kwargs = {"val_dataset": val_dataset, "test_dataset": test_dataset, "avgpool": args.pooling_layer, "self_supervised": args.self_supervised, "optimizer_choice": args.optimizer, "lr_scheduler": args.lr_scheduler}
     
     if args.enable_gpm:
         kwargs.update({"proxy_bank": proxy_bank})
