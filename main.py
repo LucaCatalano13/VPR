@@ -56,9 +56,9 @@ class LightningModel(pl.LightningModule):
              self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
         
         # Instantiate the Proxy Head and Proxy Bank
+        self.pbank = proxy_bank #non serve nell'if, al massimo = None
         if args.enable_gpm:
             self.phead = utils.ProxyHead(args.descriptors_dim)
-            self.pbank = proxy_bank
             self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
         if self.self_supervised:
             self.loss_aug = losses.VICRegLoss(invariance_lambda=25, variance_mu=25, covariance_v=1, eps=1e-4)
