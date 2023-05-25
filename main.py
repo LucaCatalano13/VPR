@@ -85,8 +85,10 @@ class LightningModel(pl.LightningModule):
         if self.optimizer_choice == "sgd":
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
         if self.optimizer_choice == "adam":
-            optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+            print("Add: ", self.optimizer_choice)
+            optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.lr_scheduler == "reducelronplateau" :
+            print("Add: ", self.lr_scheduler)
             schedulers = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
                     threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
         else :
