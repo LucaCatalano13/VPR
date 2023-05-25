@@ -10,6 +10,7 @@ from torch import nn
 import torch.nn.functional as F
 from collections import defaultdict
 import math
+import PIL
 from PIL import ImageOps, ImageFilter
 import visualizations
 
@@ -196,7 +197,7 @@ class GaussianBlur(object):
     def __call__(self, img):
         if np.random.rand() < self.p:
             sigma = np.random.rand() * 1.9 + 0.1
-            return img.cpu().detach().numpy().filter(ImageFilter.GaussianBlur(sigma))
+            return PIL.Image.fromarray(img).filter(ImageFilter.GaussianBlur(sigma))
         else:
             return img
 
