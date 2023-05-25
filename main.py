@@ -43,6 +43,7 @@ class LightningModel(pl.LightningModule):
             avgpool_param = {'in_dim': 512, 'out_dim': 512}
             self.model.avgpool = utils.CosPlace(avgpool_param['in_dim'], avgpool_param['out_dim'])
         elif avgpool == "mixvpr":
+            print("Add: mixvpr")
             self.mixvpr_out_channels = 256
             self.mixvpr_out_rows = 4
             # MixVPR works with an input of dimension [n_batch, 512, 7,7] == [n_batch, in_channels, in_h, in_w]
@@ -194,6 +195,7 @@ if __name__ == '__main__':
     args = parser.parse_arguments()
 
     if args.enable_gpm:
+        print("Add: gpm")
         proxy_bank = utils.ProxyBank(proxy_dim=512)
     else:
         proxy_bank = None
