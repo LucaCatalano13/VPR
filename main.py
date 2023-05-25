@@ -90,11 +90,11 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.lr_scheduler == "reducelronplateau" :
             print("Add: ", self.lr_scheduler)
-            schedulers = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
-                    threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+            schedulers = [ torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
+                    threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False) ]
         else :
             schedulers = []
-        return [optimizers] , [schedulers]
+        return [optimizers] , schedulers
 
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
