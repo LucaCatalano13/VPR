@@ -116,7 +116,6 @@ class LightningModel(pl.LightningModule):
             loss = loss + loss_head
         
         if self.self_supervised:
-            images_aug = self.transformer(images)
             descriptors_aug = self(images_aug, True)
             loss_aug = self.loss_aug(descriptors_aug, ref_emb = descriptors)
             loss = loss + loss_aug
