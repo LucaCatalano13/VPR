@@ -84,7 +84,7 @@ class LightningModel(pl.LightningModule):
         #TODO: change
         if self.lr_scheduler == "reducelronplateau" :
             print("Add: ", self.lr_scheduler)
-            schedulers = [ torch.lr_scheduler.MultiStepLR(optimizers, milestones=self.milestones, gamma=self.lr_mult) ]
+            schedulers = [ torch.optim.lr_scheduler.MultiStepLR(optimizers, milestones=self.milestones, gamma=self.lr_mult) ]
         else :
             schedulers = []
         return [optimizers] , schedulers
