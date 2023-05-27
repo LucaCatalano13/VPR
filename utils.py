@@ -10,8 +10,6 @@ from torch import nn
 import torch.nn.functional as F
 from collections import defaultdict
 import math
-import PIL
-from PIL import ImageOps, ImageFilter
 import visualizations
 
 
@@ -189,28 +187,6 @@ class ProxyBankBatchSampler(Sampler):
     
     def __len__(self):
         return self.iterable_size
-
-class GaussianBlur(object):
-    def __init__(self, p):
-        self.p = p
-
-    def __call__(self, img):
-        if np.random.rand() < self.p:
-            sigma = np.random.rand() * 1.9 + 0.1
-            return PIL.Image.fromarray(img.cpu().detach().numpy().astype(np.uint8)).filter(ImageFilter.GaussianBlur(sigma))
-        else:
-            return img
-
-
-class Solarization(object):
-    def __init__(self, p):
-        self.p = p
-
-    def __call__(self, img):
-        if np.random.rand() < self.p:
-            return ImageOps.solarize(img)
-        else:
-            return img
 
 def compute_recalls(eval_ds: Dataset, queries_descriptors : np.ndarray, database_descriptors : np.ndarray,
                     output_folder : str = None, num_preds_to_save : int = 0,

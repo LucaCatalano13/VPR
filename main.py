@@ -24,14 +24,6 @@ class LightningModel(pl.LightningModule):
         self.save_only_wrong_preds = save_only_wrong_preds
         self.self_supervised = self_supervised
 
-        self.transformer = tfm.Compose([tfm.RandomResizedCrop(224, interpolation=tfm.InterpolationMode.BICUBIC),
-                tfm.RandomHorizontalFlip(p=0.5),
-                tfm.RandomApply([tfm.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)], p=0.8,),
-                tfm.RandomGrayscale(p=0.2),
-                utils.GaussianBlur(p=1.0),
-                utils.Solarization(p=0.0),
-                tfm.ToTensor()])
-        
         self.optimizer_choice = optimizer_choice
         self.lr_scheduler = lr_scheduler
         # Use a pretrained model
@@ -87,7 +79,7 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
         if self.optimizer_choice == "adam":
             print("Add: ", self.optimizer_choice)
-            optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+            optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.lr_scheduler == "reducelronplateau" :
             print("Add: ", self.lr_scheduler)
             schedulers = [ torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
@@ -107,7 +99,7 @@ class LightningModel(pl.LightningModule):
 
     # This is the training step that's executed at each iteration
     def training_step(self, batch, batch_idx):
-        images, labels = batch
+        images, images_aug, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
@@ -174,7 +166,8 @@ def get_datasets_and_dataloaders(args, bank=None):
         dataset_folder=args.train_path,
         img_per_place=args.img_per_place,
         min_img_per_place=args.min_img_per_place,
-        transform=train_transform
+        transform=train_transform,
+        self_supervised=args.self_supervised
     )
     val_dataset = TestDataset(dataset_folder=args.val_path)
     test_dataset = TestDataset(dataset_folder=args.test_path)
