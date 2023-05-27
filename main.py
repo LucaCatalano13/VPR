@@ -26,6 +26,7 @@ class LightningModel(pl.LightningModule):
 
         self.optimizer_choice = optimizer_choice
         self.lr_scheduler = lr_scheduler
+        self.mimilestones = [5, 10, 15],
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         
@@ -80,10 +81,10 @@ class LightningModel(pl.LightningModule):
         if self.optimizer_choice == "adam":
             print("Add: ", self.optimizer_choice)
             optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        #TODO: change
         if self.lr_scheduler == "reducelronplateau" :
             print("Add: ", self.lr_scheduler)
-            schedulers = [ torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode='min', factor=0.1, patience=10, \
-                    threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False) ]
+            schedulers = [ torch.lr_scheduler.MultiStepLR(optimizers, milestones=self.milestones, gamma=self.lr_mult) ]
         else :
             schedulers = []
         return [optimizers] , schedulers
