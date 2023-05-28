@@ -26,7 +26,7 @@ class LightningModel(pl.LightningModule):
 
         self.optimizer_choice = optimizer_choice
         self.lr_scheduler = lr_scheduler
-        self.milestones = [5, 10, 15],
+        self.milestones = [5, 10, 15]
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         
