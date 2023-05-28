@@ -86,6 +86,7 @@ class TrainDataset(Dataset):
         images = [self.transform(img) for img in images]
 
         if self.self_supervised:
+            print("Hello2")
             images_aug = [self.transformer_aug(img) for img in images_aug]
             return torch.stack(images), torch.stack(images_aug), torch.tensor(index).repeat(self.img_per_place)
         
