@@ -100,7 +100,10 @@ class LightningModel(pl.LightningModule):
 
     # This is the training step that's executed at each iteration
     def training_step(self, batch, batch_idx):
-        images, images_aug, labels = batch
+        if self.self_supervised:
+            images, images_aug, labels = batch
+        else:
+            images, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
