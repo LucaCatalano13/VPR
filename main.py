@@ -104,6 +104,7 @@ class LightningModel(pl.LightningModule):
         images, images_aug, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
+        images_aug = images_aug.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
         # Feed forward the batch to the model
         descriptors, compressed_descriptors = self(images, False)  # Here we are calling the method forward that we defined above
