@@ -71,7 +71,7 @@ class LightningModel(pl.LightningModule):
         else:
             compressed_descriptors = None
         if is_transformed:
-            descriptors = self.model(images)
+            # descriptors = self.model(images)
             return descriptors
         return descriptors, compressed_descriptors
 
