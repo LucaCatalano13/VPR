@@ -55,7 +55,8 @@ class LightningModel(pl.LightningModule):
         self.pbank = proxy_bank #non serve nell'if, al massimo = None
         if args.enable_gpm:
             self.phead = utils.ProxyHead(args.descriptors_dim)
-            self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
+            # self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
+            self.loss_head = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         if self.self_supervised:
             self.loss_aug = losses.VICRegLoss(invariance_lambda=25, variance_mu=25, covariance_v=1, eps=1e-4)
         # Set miner
@@ -92,10 +93,10 @@ class LightningModel(pl.LightningModule):
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
         # Include a miner for loss'pair selection
-        miner_output = self.miner_fn(descriptors , labels)
+        # miner_output = self.miner_fn(descriptors , labels)
         # Compute the loss using the loss function and the miner output instead of all possible batch pairs
-        loss = self.loss_fn(descriptors, labels, miner_output)
-        # loss = self.loss_fn(descriptors, labels)
+        # loss = self.loss_fn(descriptors, labels, miner_output)
+        loss = self.loss_fn(descriptors, labels)
         return loss
 
     # This is the training step that's executed at each iteration
