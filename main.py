@@ -55,15 +55,15 @@ class LightningModel(pl.LightningModule):
         self.pbank = proxy_bank #non serve nell'if, al massimo = None
         if args.enable_gpm:
             self.phead = utils.ProxyHead(args.descriptors_dim)
-            # self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
-            self.loss_head = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+            self.loss_head = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
+            # self.loss_head = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         if self.self_supervised:
             self.loss_aug = losses.VICRegLoss(invariance_lambda=25, variance_mu=25, covariance_v=1, eps=1e-4)
         # Set miner
         # self.miner_fn = miners.MultiSimilarityMiner(epsilon=0.1)
         # Set loss_function
-        # self.loss_fn = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
-        self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
+        self.loss_fn = losses.MultiSimilarityLoss(alpha=1, beta=50, base=0.0)
+        # self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
     def forward(self, images, is_transformed):
         descriptors = self.model(images)
