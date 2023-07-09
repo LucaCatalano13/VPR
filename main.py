@@ -98,7 +98,11 @@ class LightningModel(pl.LightningModule):
         # loss = self.loss_fn(descriptors, labels, miner_output)
         loss = self.loss_fn(descriptors, labels)
         return loss
-
+    
+    def combined_loss(self, descriptors, labels, ref_desc):
+        vicreg_loss = self.loss_aug(descriptors, ref_emb = ref_desc)
+        return vicreg_loss
+    
     # This is the training step that's executed at each iteration
     def training_step(self, batch, batch_idx):
         if self.self_supervised:
@@ -107,9 +111,11 @@ class LightningModel(pl.LightningModule):
             images, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
+        images_aug = images_aug.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
         # Feed forward the batch to the model
         descriptors, compressed_descriptors = self(images, False)  # Here we are calling the method forward that we defined above
+        descriptors_aug, compressed_descriptors = self(images_aug,False)
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
 
         if args.enable_gpm:
@@ -120,10 +126,7 @@ class LightningModel(pl.LightningModule):
             loss = loss + loss_head
         
         if self.self_supervised:
-            images_aug = images_aug.view(num_places * num_images_per_place, C, H, W)
-            descriptors_aug = self(images_aug, True)
-            loss_aug = self.loss_aug(descriptors_aug, ref_emb = descriptors)
-            loss = loss + loss_aug
+            loss = self.combined_loss(descriptors=descriptors, labels=labels, ref_desc = descriptors_aug)
 
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -161,12 +164,22 @@ class LightningModel(pl.LightningModule):
         self.log('R@1', recalls[0], prog_bar=False, logger=True)
         self.log('R@5', recalls[1], prog_bar=False, logger=True)
 
-def get_datasets_and_dataloaders(args, bank=None):
-    train_transform = tfm.Compose([
-        tfm.RandAugment(num_ops=3),
-        tfm.ToTensor(),
-        tfm.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+def get_datasets_and_dataloaders(self, args, bank=None):
+    if self.self_supervised : 
+        train_transform = tfm.Compose([
+             tfm.RandomApply(transforms=[
+                    tfm.RandomHorizontalFlip(p = 0.7),
+                    tfm.RandomCrop(size=224),
+            ], p=0.3),
+            tfm.ToTensor(),
+            tfm.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+    else:
+        train_transform = tfm.Compose([
+            tfm.RandAugment(num_ops=3),
+            tfm.ToTensor(),
+            tfm.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
     train_dataset = TrainDataset(
         dataset_folder=args.train_path,
         img_per_place=args.img_per_place,

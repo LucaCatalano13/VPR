@@ -59,14 +59,13 @@ class TrainDataset(Dataset):
         self.img_per_place = img_per_place
         self.transform = transform
         
-        self.transformer_aug = tfm.Compose([tfm.RandomResizedCrop(224, interpolation=tfm.InterpolationMode.BICUBIC),
-                tfm.RandomHorizontalFlip(p=0.5),
-                tfm.RandomApply([tfm.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)], p=0.8,),
-                tfm.RandomGrayscale(p=0.2),
-                GaussianBlur(p=1.0),
-                Solarization(p=0.0),
-                tfm.ToTensor()])
-        
+        self.transformer_aug = tfm.Compose([
+                    tfm.RandomHorizontalFlip(p = 1),
+                    tfm.RandomPerspective(p=0.5),
+                    tfm.RandomCrop(size=224),
+                    tfm.ToTensor(),
+                    tfm.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
         self.self_supervised = self_supervised
 
         # keep only places depicted by at least min_img_per_place images
@@ -86,8 +85,11 @@ class TrainDataset(Dataset):
         images = [self.transform(img) for img in images]
 
         if self.self_supervised:
+            image = images[0::2]
+            images_aug = images[1::2]
+            image = [self.transform(img) for img in image]
             images_aug = [self.transformer_aug(img) for img in images_aug]
-            return torch.stack(images), torch.stack(images_aug), torch.tensor(index).repeat(self.img_per_place)
+            return torch.stack(image), torch.stack(images_aug), torch.tensor(index).repeat(2)
         
         return torch.stack(images), torch.tensor(index).repeat(self.img_per_place)
     
