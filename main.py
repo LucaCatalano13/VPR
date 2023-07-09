@@ -99,7 +99,7 @@ class LightningModel(pl.LightningModule):
         loss = self.loss_fn(descriptors, labels)
         return loss
     
-    def combined_loss(self, descriptors, labels, ref_desc):
+    def vicreg_loss(self, descriptors, labels, ref_desc):
         vicreg_loss = self.loss_aug(descriptors, ref_emb = ref_desc)
         return vicreg_loss
     
@@ -118,6 +118,9 @@ class LightningModel(pl.LightningModule):
         descriptors_aug, compressed_descriptors = self(images_aug,False)
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
 
+        if self.self_supervised:
+            loss = self.vicreg_loss(descriptors=descriptors, labels=labels, ref_desc = descriptors_aug)
+
         if args.enable_gpm:
             # descriptors = descriptors.cpu() #tensore privo di gradient
             # compressed_descriptors = compressed_descriptors.cpu().detach()
@@ -125,9 +128,6 @@ class LightningModel(pl.LightningModule):
             loss_head = self.loss_head(compressed_descriptors, labels)
             loss = loss + loss_head
         
-        if self.self_supervised:
-            loss = self.combined_loss(descriptors=descriptors, labels=labels, ref_desc = descriptors_aug)
-
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
     # For validation and test, we iterate step by step over the validation set
@@ -196,7 +196,10 @@ def get_datasets_and_dataloaders(self, args, bank=None):
         my_proxy_sampler = utils.ProxyBankBatchSampler(train_dataset, args.batch_size , bank)
         train_loader = DataLoader(dataset=train_dataset, batch_sampler = my_proxy_sampler, num_workers=args.num_workers)
     else:
-        train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        if self.self_supervised:
+            train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+        else :
+            train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
    
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
